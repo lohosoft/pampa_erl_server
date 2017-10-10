@@ -1,0 +1,1 @@
+-define(myPrint(Info,Term), io:format("~p : ~p \n",[Info,Term])).

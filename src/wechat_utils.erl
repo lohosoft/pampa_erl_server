@@ -2,6 +2,7 @@
 
 -include("../include/config.hrl").
 -include("../include/wechat.hrl").
+-include("../include/mylog.hrl").
 
 -import(lists, [nth/2, map/2, foldl/3]).
 % -import(erlang,[integer_to_list/2, list_to_integer/2]).
@@ -13,7 +14,16 @@ check(Signature, Timestamp, Nonce) ->
     TmpList = [Token, Timestamp, Nonce],
     TmpList2 = lists:sort(TmpList),
     TmpStr = string:join(TmpList2, ""),
-    % need aes encrypto here ==================  TODO
+    % B equals B1
+    % B = erlang:md5(TmpStr),
+    % B1 = crypto:hash(md5,TmpStr),
+    % ?myPrint("crypto hash string",myutils:binary_to_hexstring(B1)),
+    ShaStr = string:lowercase(sha1:hexstring(TmpStr)),
+    % ?myPrint("sha1",sha1:hexstring(TmpStr)),
+    % ?myPrint("signature",Signature),
+    string:equal(ShaStr,Signature).
+
+    
 
 
 %%====================================================================

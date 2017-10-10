@@ -1,14 +1,16 @@
 -module(pampa_api_handler).
 -behavior(cowboy_handler).
+-include("../include/mylog.hrl").
 
 -export([init/2]).
 
 init(Req, State) ->
-	% Qs = cowboy_req:parse_qs(Req),
-	% io:format("~p",[Qs]),
+
+	% parse params ========
 	#{
 		<<"nonce">> := Nonce,
 		<<"timestamp">> := Timestamp,
+		% not use following yet ==========
 		% <<"openid">> := OpenID,
 		% <<"encrypt_type">> := EncryptType,
 		% <<"msg_signature">> := MsgSignature,
@@ -16,24 +18,20 @@ init(Req, State) ->
 
 	} = 
 		maps:from_list(cowboy_req:parse_qs(Req)),
-	io:format("~p \n",[Signature]),
-	io:format("~p \n",[Timestamp]),
-	io:format("~p \n",[Nonce]),
 	
 
 	Check = wechat_utils:check(binary_to_list(Signature), binary_to_list(Timestamp), binary_to_list(Nonce)),
+	% ?myPrint("check",Check),
 
-	io:format("check resutl is : ~p ",[Check]),
-	{ok,Req,State}.
-	% if
-	% 	Check == false ->
-	% 		{error,Req,State};
-	% 	true ->
-	% 		Method = cowboy_req:method(Req),
-	% 		handle(Method,Req,State)
-	% end.
+	if
+		Check == false ->
+			{error,Req,State};
+		true ->
+			Method = cowboy_req:method(Req),
+			handle(Method,Req,State)
+	end.
 
-% for pass wechat token identification
+% for pass wechat token identification ==================
 % handle(<<"GET">>,Req,State) ->
 % 	Qs1 = cowboy_req:parse_qs(Req),
 % 	{_,Echo} = lists:nth(2,Qs1),
@@ -54,8 +52,7 @@ handle(<<"GET">>,Req,State) ->
 		),
 	{ok,Req1,State};
 handle(<<"POST">>,Req,State) ->
-
-	io:format("~p : ~p \n",["POST Req",Req]),
+	?myPrint("post req",Req),
 	Req1 = cowboy_req:reply(
 		200,
 		#{<<"content-type">> => <<"text/plain">>},

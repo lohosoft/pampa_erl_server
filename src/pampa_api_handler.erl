@@ -2,6 +2,7 @@
 -behavior(cowboy_handler).
 -include("../include/mylog.hrl").
 -include("../include/config.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
 -export([init/2]).
 
@@ -35,14 +36,26 @@ init(Req, State) ->
 	end.
 
 
+% handle(<<"GET">>,Req,State) ->
+% 	Req1 = cowboy_req:reply(
+% 		200,
+% 		#{<<"content-type">> => <<"text/plain">>},
+% 		<<"get echo">>,
+% 		Req
+% 		),
+% 	{ok,Req1,State};
+
 handle(<<"GET">>,Req,State) ->
+	Qs1 = cowboy_req:parse_qs(Req),
+	{_,Echo} = lists:nth(2,Qs1),
 	Req1 = cowboy_req:reply(
-		200,
-		#{<<"content-type">> => <<"text/plain">>},
-		<<"get echo">>,
-		Req
-		),
+			200,
+			#{<<"content-type">> => <<"text/plain">>},
+			Echo,
+			Req
+			),
 	{ok,Req1,State};
+
 handle(<<"POST">>,Req,State) ->
 	% ?myPrint("post req",Req),
 	{ok, Body, Req1} = cowboy_req:read_body(Req),
@@ -71,36 +84,68 @@ handle(<<"POST">>,Req,State) ->
 	Token0 = maps:get(?STATE_TOKEN,State),
 
 	case MsgType of
-		% <<"text">>  ->
-		% 	{Token1,_ResData} = utake1_itake1:handle('TEXT',Content2,Token0),
-		% 	{ok,Req1,State#{?STATE_TOKEN := Token1}};
-
-		<<"video">> ->
-			{Token1,ResData} = utake1_itake1:handle('VIDEO',Content2,Token0),
-			?myPrint("video reply data",length(ResData)),
-			{ok,Req1,State#{?STATE_TOKEN := Token1}};
-		<<"image">> ->
-			{Token1,ResData} = utake1_itake1:handle('IMAGE',Content2,Token0),
-			?myPrint("image reply data",length(ResData)),
-
-			[MediaId] 			= 		maps:get(<<"MediaId">>,Content2),
-
+		<<"text">>  ->
+			% {Token1,_ResData} = utake1_itake1:handle('TEXT',Content2,Token0),
 			[CreateTime] 		= 		maps:get(<<"CreateTime">>,Content2),
 			[ToUserName]		=		maps:get(<<"ToUserName">>,Content2),
 			[FromUserName]		=		maps:get(<<"FromUserName">>,Content2),
-			Reply1 = 
-	
-				[exomler:encode({<<"ToUserName">>,[],[ToUserName]}),
-				exomler:encode({<<"FromUserName">>,[],[FromUserName]}),
-				exomler:encode({<<"CreateTime">>,[],[CreateTime]}),
-				exomler:encode({<<"MsgType">>,[],[MsgType]})],
+			% [MsgId]				= 		maps:get(<<"MsgId">>,Content2),
+			Reply0 = [
+				<<"<xml>">>,
+				<<"<ToUserName><![CDATA[">>,ToUserName,<<"]]></ToUserName>">>,
+				<<"<FromUserName><![CDATA[">>,FromUserName,<<"]]></FromUserName>">>,
+				<<"<CreateTime>">>,CreateTime,<<"</CreateTime>">>,
+				<<"<MsgType><![CDATA[">>,MsgType,<<"]]></MsgType>">>,
+				<<"<Content><![CDATA[">>,<<"hello">>,<<"]]></Content>">>,
+				% <<"<MsgId><![CDATA[">>,MsgId,<<"]]></MsgId>">>,
+				<<"</xml>">>
+			],
+			Reply1 = iolist_to_binary(Reply0),
+			?myPrint("text reply",Reply1),
+			Req2 = cowboy_req:reply(
+					200,
+					#{<<"content-type">> => <<"application/xml">>},
+					% Reply1,
+					<<"">>,
+					Req1
+				),
 
+
+			{ok,Req2,State#{?STATE_TOKEN := <<"">>}};
+
+
+		<<"video">> ->
+			{Token1,_ResData} = utake1_itake1:handle('VIDEO',Content2,Token0),
+			% ?myPrint("video reply data",length(ResData)),
+			{ok,Req1,State#{?STATE_TOKEN := Token1}};
+		<<"image">> ->
+			{Token1,_ResData} = utake1_itake1:handle('IMAGE',Content2,Token0),
+			% ?myPrint("image reply data",length(ResData)),
+
+			[MediaId] 			= 		maps:get(<<"MediaId">>,Content2),
+			[CreateTime] 		= 		maps:get(<<"CreateTime">>,Content2),
+			[ToUserName]		=		maps:get(<<"ToUserName">>,Content2),
+			[FromUserName]		=		maps:get(<<"FromUserName">>,Content2),
+
+			Reply0 = [
+				<<"<xml>">>,
+				<<"<ToUserName><![CDATA[">>,ToUserName,<<"]]></ToUserName>">>,
+				<<"<FromUserName><![CDATA[">>,FromUserName,<<"]]></FromUserName>">>,
+				<<"<CreateTime>">>,CreateTime,<<"</CreateTime>">>,
+				<<"<MsgType><![CDATA[">>,MsgType,<<"]]></MsgType>">>,
+				<<"<Image>">>,
+				<<"<MediaId><![CDATA[">>,MediaId,<<"]]></MediaId>">>,
+				<<"</Image>">>,
+				<<"</xml>">>
+			],
+			Reply1 = iolist_to_binary(Reply0),
 
 			?myPrint("reply xml",Reply1),
 			Req2 = cowboy_req:reply(
 				200,
 				#{<<"content-type">> => <<"application/xml">>},
 				Reply1,
+				% <<"">>,
 				Req1
 				),
 
@@ -111,8 +156,6 @@ handle(<<"POST">>,Req,State) ->
 
 handle(_,Req,State) ->
 	cowboy_req:reply(405,Req,State).
-
-
 
 
 

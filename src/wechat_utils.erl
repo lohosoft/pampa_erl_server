@@ -19,7 +19,7 @@ getMediaData(Type,Token,MediaId) ->
     % ?myPrint("get media data response",Response),
 
     {ok,"200",Params,RawData} = Response,
-    ?myPrint("get media data response params",Params),
+    % ?myPrint("get media data response params",Params),
     % ?myPrint("get media raw data",RawData),
 
     try jiffy:decode(RawData) of

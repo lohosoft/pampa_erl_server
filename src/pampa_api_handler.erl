@@ -1,10 +1,13 @@
 -module(pampa_api_handler).
 -behavior(cowboy_handler).
 -include("../include/mylog.hrl").
+-include("../include/config.hrl").
 
 -export([init/2]).
 
 init(Req, State) ->
+	% not work yet =================  TODO 
+	?myPrint("init state is",State),
 
 	% parse params ========
 	#{
@@ -21,7 +24,7 @@ init(Req, State) ->
 	
 
 	Check = wechat_utils:check(binary_to_list(Signature), binary_to_list(Timestamp), binary_to_list(Nonce)),
-	?myPrint("check",Check),
+	% ?myPrint("check",Check),
 
 	if
 		Check == false ->
@@ -44,22 +47,64 @@ handle(<<"POST">>,Req,State) ->
 	% ?myPrint("post req",Req),
 	{ok, Body, Req1} = cowboy_req:read_body(Req),
 	RootElement = exomler:decode(Body),
+
 	{_Tag, _Attrs, Content} = RootElement,
-	% remove [] between K,V made by exomler ======================  TODO
+	% ?myPrint("content",Content),
+	% for later reply use ======================
+	% ?myPrint("xml tag",Tag),
+	% ?myPrint("xml attrs",Attrs),
+	% remove [] between K,V made by exomler ====================== 
+	% decrypt not yet TODO ===============
 	Content1 = [{K,V} || {K,_emptylist,V} <- Content],
 	Content2 = maps:from_list(Content1),
 	% ?myPrint("Content",Content2),
 
 	[MsgType] = maps:get(<<"MsgType">>,Content2),
-	?myPrint('MsgType',MsgType),
+	?myPrint("MsgType",MsgType),
+
+	% [Encrypt] = maps:get(<<"Encrypt">>,Content2),
+
+	% ?myPrint("Encrypt",Encrypt),
+	% =============================================
+	% pass token into handler for get resource from wechat server 
+	% back with new token anyway ,changed or not
+	Token0 = maps:get(?STATE_TOKEN,State),
+
 	case MsgType of
+		% <<"text">>  ->
+		% 	{Token1,_ResData} = utake1_itake1:handle('TEXT',Content2,Token0),
+		% 	{ok,Req1,State#{?STATE_TOKEN := Token1}};
+
 		<<"video">> ->
-			ResData = utake1_itake1:handle('VIDEO',Content2),
-			?myPrint("video reply data",ResData),
-			{ok,Req1,State};
+			{Token1,ResData} = utake1_itake1:handle('VIDEO',Content2,Token0),
+			?myPrint("video reply data",length(ResData)),
+			{ok,Req1,State#{?STATE_TOKEN := Token1}};
 		<<"image">> ->
-			ResData = utake1_itake1:handle('IMAGE',Content2),
-			{ok,Req1,State};
+			{Token1,ResData} = utake1_itake1:handle('IMAGE',Content2,Token0),
+			?myPrint("image reply data",length(ResData)),
+
+			[MediaId] 			= 		maps:get(<<"MediaId">>,Content2),
+
+			[CreateTime] 		= 		maps:get(<<"CreateTime">>,Content2),
+			[ToUserName]		=		maps:get(<<"ToUserName">>,Content2),
+			[FromUserName]		=		maps:get(<<"FromUserName">>,Content2),
+			Reply1 = 
+	
+				[exomler:encode({<<"ToUserName">>,[],[ToUserName]}),
+				exomler:encode({<<"FromUserName">>,[],[FromUserName]}),
+				exomler:encode({<<"CreateTime">>,[],[CreateTime]}),
+				exomler:encode({<<"MsgType">>,[],[MsgType]})],
+
+
+			?myPrint("reply xml",Reply1),
+			Req2 = cowboy_req:reply(
+				200,
+				#{<<"content-type">> => <<"application/xml">>},
+				Reply1,
+				Req1
+				),
+
+			{ok,Req2,State#{?STATE_TOKEN := Token1}};
 		_NotYetForOtherMsgType ->
 			{ok,Req1,State}
 	end;

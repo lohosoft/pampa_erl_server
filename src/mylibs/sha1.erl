@@ -11,7 +11,7 @@
 -module(sha1).
 -export([binstring/1, hexstring/1, binfile/1, hexfile/1]).
 -import(lists, [nth/2, map/2, foldl/3]).
--import(erlang,[integer_to_list/2, list_to_integer/2]).
+% -import(erlang,[integer_to_list/2, list_to_integer/2]).
 
 binstring(S) -> fun_apply(S, fun list_to_binary/1, fun(X)->X end).
 hexstring(S) -> fun_apply(S, fun list_to_binary/1, fun bin2hex/1).
